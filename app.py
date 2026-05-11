@@ -3,6 +3,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
 import re
 import random
+import requests
 
 app = Flask(__name__)
 
@@ -19,11 +20,13 @@ PROXIES = [
     "23.229.19.94:8689:pnllxgdm:46gb5smrbs0w",
 ]
 
-def get_random_proxy():
+def get_proxy_session():
     p = random.choice(PROXIES)
     ip, port, user, pwd = p.split(":")
     proxy_url = f"http://{user}:{pwd}@{ip}:{port}"
-    return {"http": proxy_url, "https": proxy_url}
+    session = requests.Session()
+    session.proxies = {"http": proxy_url, "https": proxy_url}
+    return session
 
 def extract_video_id(url):
     patterns = [
@@ -47,11 +50,10 @@ def get_transcript():
 
     video_id = extract_video_id(url)
 
-    # Try up to 3 different proxies before giving up
     last_error = None
     for _ in range(3):
         try:
-            ytt = YouTubeTranscriptApi(proxies=get_random_proxy())
+            ytt = YouTubeTranscriptApi(http_client=get_proxy_session())
             transcript = ytt.fetch(video_id, languages=[lang, 'en'])
             segments = transcript.to_raw_data()
             full_text = ' '.join([s['text'] for s in segments])
@@ -77,4 +79,3 @@ def health():
 
 if __name__ == '__main__':
     app.run()
-    
