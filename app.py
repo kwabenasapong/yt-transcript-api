@@ -6,7 +6,6 @@ import re
 app = Flask(__name__)
 
 def extract_video_id(url):
-    """Extract video ID from any YouTube URL format"""
     patterns = [
         r'youtu\.be/([^?&]+)',
         r'youtube\.com/watch\?v=([^&]+)',
@@ -16,7 +15,7 @@ def extract_video_id(url):
         match = re.search(pattern, url)
         if match:
             return match.group(1)
-    return url  # assume it's already a video ID
+    return url
 
 @app.route('/transcript', methods=['GET'])
 def get_transcript():
@@ -29,13 +28,15 @@ def get_transcript():
     video_id = extract_video_id(url)
 
     try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=[lang, 'en'])
-        full_text = ' '.join([s['text'] for s in transcript])
+        ytt = YouTubeTranscriptApi()
+        transcript = ytt.fetch(video_id, languages=[lang, 'en'])
+        segments = transcript.to_raw_data()
+        full_text = ' '.join([s['text'] for s in segments])
         return jsonify({
             'video_id': video_id,
             'language': lang,
             'text': full_text,
-            'segments': transcript
+            'segments': segments
         })
     except TranscriptsDisabled:
         return jsonify({'error': 'Transcripts are disabled for this video'}), 404
